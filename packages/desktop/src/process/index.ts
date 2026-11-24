@@ -19,6 +19,7 @@ if (app.isPackaged) {
 import initStorage from './utils/initStorage';
 import './utils/initBridge';
 import './services/i18n'; // Initialize i18n for main process
+import { startMeshGatewayFromEnv } from './services/meshGatewayRuntime';
 
 export const initializeProcess = async () => {
   const t0 = performance.now();
@@ -26,4 +27,7 @@ export const initializeProcess = async () => {
 
   await initStorage();
   mark('initStorage');
+
+  // 本地 MCP 注入网关，后台启动；失败不影响应用 / Start the local MCP gateway in the background.
+  void startMeshGatewayFromEnv();
 };
