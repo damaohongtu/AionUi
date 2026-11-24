@@ -352,6 +352,14 @@ body.login-page-active {
   border: 1px solid #bbf7d0;
 }
 
+.login-page__return-hint {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #888;
+}
+
 .login-page__footer {
   text-align: center;
   padding-top: 20px;

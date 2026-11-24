@@ -1101,6 +1101,7 @@ export type I18nKey =
   | 'login.password'
   | 'login.passwordPlaceholder'
   | 'login.rememberMe'
+  | 'login.returnHint'
   | 'login.showPassword'
   | 'login.submit'
   | 'login.submitting'

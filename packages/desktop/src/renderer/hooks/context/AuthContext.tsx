@@ -1,9 +1,18 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PREVIEW_SCOPE_KEY_PREFIX } from '@/renderer/pages/conversation/Preview/context/previewScope';
+import { AUTH_REQUIRED_EVENT } from '@/common/config/constants';
 import { refreshSession } from '@/common/adapter/sessionRefresh';
+import {
+  clearExternalAccountSession,
+  clearExternalLoginPending,
+  openExternalAccountLogin,
+  readExternalAccountSession,
+  resolveReturnedAccountName,
+  saveExternalAccountSession,
+  type ExternalAccountSession,
+} from '@/renderer/services/externalAccount';
 // M6: CSRF removed with legacy webserver — stub functions for compatibility, re-implement in M7
 const withCsrfToken = <T extends Record<string, unknown>>(data: T): T => data;
-const hasValidCsrfToken = (): boolean => true;
 const clearCookie = (_name: string, _path?: string): void => {};
 const CSRF_COOKIE_NAME = 'csrf-token';
 
@@ -14,32 +23,21 @@ export interface AuthUser {
   username: string;
 }
 
-interface LoginParams {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
-
-type LoginErrorCode =
-  | 'invalidCredentials'
-  | 'tooManyAttempts'
-  | 'serverError'
-  | 'networkError'
-  | 'csrfError'
-  | 'unknown';
-
-interface LoginResult {
-  success: boolean;
-  message?: string;
-  code?: LoginErrorCode;
-  shouldClearCache?: boolean;
-}
-
 interface AuthContextValue {
   ready: boolean;
   user: AuthUser | null;
   status: AuthStatus;
-  login: (params: LoginParams) => Promise<LoginResult>;
+  /**
+   * 打开外部账号登录。桌面端返回站点是否确认了用户；WebUI 打开标签页后返回 false，
+   * 由 completeExternalAccountLogin 在用户切回应用时补完。
+   *
+   * Open the external account sign-in. Desktop reports whether the portal
+   * confirmed a user; WebUI opens a tab and returns false, then
+   * completeExternalAccountLogin finishes when the user comes back.
+   */
+  startExternalAccountLogin: () => Promise<boolean>;
+  /** 从外部登录页返回后完成登录（WebUI）/ Finish sign-in after returning from the external page (WebUI). */
+  completeExternalAccountLogin: () => void;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   clearAuthCache: () => void;
@@ -134,10 +132,28 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [ready, setReady] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  const applyExternalSession = useCallback((session: ExternalAccountSession) => {
+    setUser({ id: session.id, username: session.username });
+    setStatus('authenticated');
+    setReady(true);
+  }, []);
+
   const refresh = useCallback(async () => {
+    // 外部账号登录态优先：它只在用户从登录页返回后才存在。
+    // An external-account session wins: it only exists once the user came back
+    // from the external sign-in page.
+    const externalSession = readExternalAccountSession();
+    if (externalSession) {
+      applyExternalSession(externalSession);
+      return;
+    }
+
+    // 桌面端与 WebUI 共用同一套登录入口，不再直接放行。
+    // Desktop and WebUI share the same sign-in entry now; desktop is no longer
+    // treated as implicitly authenticated.
     if (isDesktopRuntime) {
-      setStatus('authenticated');
       setUser(null);
+      setStatus('unauthenticated');
       setReady(true);
       return;
     }
@@ -156,7 +172,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setStatus('unauthenticated');
     }
     setReady(true);
-  }, []);
+  }, [applyExternalSession]);
 
   useEffect(() => {
     void refresh();
@@ -165,135 +181,81 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     };
   }, [refresh]);
 
-  const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
-    try {
-      if (isDesktopRuntime) {
-        setReady(true);
-        return { success: true };
-      }
+  // 实时通道确认登录失效时，清掉本地记录的外部账号登录态：
+  // 本地标记还在的话，路由会把 /login 立刻弹回应用，和实时通道的踢回形成死循环。
+  // Drop the locally recorded external account session when the realtime channel
+  // confirms it is dead; otherwise the router bounces /login back into the app
+  // while the realtime channel kicks the user out again — an endless loop.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-      // Check CSRF token availability before login
-      // If token is missing, clear cache and inform user
-      const csrfTokenValid = hasValidCsrfToken();
-      if (!csrfTokenValid) {
-        console.warn('CSRF token missing or invalid, clearing cache');
-        clearAuthCache();
-        // Allow login to proceed anyway - server will set new token
-      }
+    const handleAuthRequired = () => {
+      if (!readExternalAccountSession()) return;
 
-      // P1 安全修复：登录请求需要 CSRF Token / P1 Security fix: Login needs CSRF token
-      // Backend route is /login; web-host's static-server explicitly proxies it.
-      const response = await fetch('/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(withCsrfToken({ username, password, remember })),
-      });
-
-      const data = (await response.json()) as {
-        success: boolean;
-        message?: string;
-        user?: AuthUser;
-      };
-
-      if (!response.ok || !data.success || !data.user) {
-        let code: LoginErrorCode = 'unknown';
-        let message = data?.message ?? 'Login failed';
-        let shouldClearCache = false;
-
-        if (response.status === 401) {
-          code = 'invalidCredentials';
-        } else if (response.status === 403) {
-          // CSRF validation failed - clear cache
-          code = 'csrfError';
-          message = 'Security token expired. Please try again.';
-          shouldClearCache = true;
-        } else if (response.status === 429) {
-          code = 'tooManyAttempts';
-        } else if (response.status >= 500) {
-          code = 'serverError';
-        } else if (!csrfTokenValid) {
-          // If we knew CSRF was invalid and login failed, suggest cache clear
-          code = 'csrfError';
-          message = 'Login failed due to cached data. Please clear your browser cache and try again.';
-          shouldClearCache = true;
-        }
-
-        // Clear cache on CSRF-related errors
-        if (shouldClearCache) {
-          clearAuthCache();
-        }
-
-        return {
-          success: false,
-          message,
-          code,
-          shouldClearCache,
-        };
-      }
-
-      setUser(data.user);
-      setStatus('authenticated');
-      setReady(true);
-
-      // Re-enable WebSocket reconnection after successful login (WebUI mode only)
-      if (typeof window !== 'undefined' && (window as any).__websocketReconnect) {
-        (window as any).__websocketReconnect();
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Login request failed:', error);
-
-      // Check if error is related to CSRF token parsing
-      const errorMessage = (error as Error).message;
-      if (errorMessage?.includes('parse') || errorMessage?.includes('csrf') || errorMessage?.includes('cookie')) {
-        // CSRF or cookie parsing error - clear cache
-        clearAuthCache();
-        return {
-          success: false,
-          message: 'Login failed due to cached data. Please clear your browser cache and try again.',
-          code: 'csrfError',
-          shouldClearCache: true,
-        };
-      }
-
-      return {
-        success: false,
-        message: 'Network error. Please try again.',
-        code: 'networkError',
-      };
-    }
-  }, []);
-
-  const logout = useCallback(async () => {
-    if (isDesktopRuntime) {
-      setUser(null);
-      setStatus('authenticated');
-      setReady(true);
-      return;
-    }
-
-    try {
-      await fetch('/logout', {
-        method: 'POST',
-        // Logout also needs CSRF token / 登出同样需要 CSRF Token
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(withCsrfToken({})),
-      });
-    } catch (error) {
-      console.error('Logout request failed:', error);
-    } finally {
+      clearExternalAccountSession();
+      clearExternalLoginPending();
       setUser(null);
       setStatus('unauthenticated');
-      // Clear cache on logout for security
-      clearAuthCache();
+      setReady(true);
+    };
+
+    window.addEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired);
+    return () => window.removeEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired);
+  }, []);
+
+  const startExternalAccountLogin = useCallback(async () => {
+    const account = await openExternalAccountLogin();
+    // 桌面端：站点确认了用户才算登录；用户关掉登录窗口就是没登录。
+    // Desktop: the portal has to confirm a user; closing the window is a cancel.
+    if (!account) return false;
+
+    clearExternalLoginPending();
+    const session = saveExternalAccountSession(account.displayName, {
+      portalId: account.portalId,
+      provider: account.provider,
+    });
+    applyExternalSession(session);
+    return true;
+  }, [applyExternalSession]);
+
+  const completeExternalAccountLogin = useCallback(() => {
+    clearExternalLoginPending();
+    const username = resolveReturnedAccountName(window.location.search);
+    const session = saveExternalAccountSession(username);
+    applyExternalSession(session);
+
+    // Re-enable WebSocket reconnection after successful login (WebUI mode only)
+    const reconnect = (window as { __websocketReconnect?: () => void }).__websocketReconnect;
+    if (typeof reconnect === 'function') {
+      reconnect();
     }
+  }, [applyExternalSession]);
+
+  const logout = useCallback(async () => {
+    clearExternalAccountSession();
+    clearExternalLoginPending();
+
+    if (!isDesktopRuntime) {
+      try {
+        await fetch('/logout', {
+          method: 'POST',
+          // Logout also needs CSRF token / 登出同样需要 CSRF Token
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify(withCsrfToken({})),
+        });
+      } catch (error) {
+        console.error('Logout request failed:', error);
+      }
+    }
+
+    setUser(null);
+    setStatus('unauthenticated');
+    setReady(true);
+    // Clear cache on logout for security
+    clearAuthCache();
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -301,12 +263,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       ready,
       user,
       status,
-      login,
+      startExternalAccountLogin,
+      completeExternalAccountLogin,
       logout,
       refresh,
       clearAuthCache,
     }),
-    [login, logout, ready, refresh, status, user]
+    [completeExternalAccountLogin, logout, ready, refresh, startExternalAccountLogin, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

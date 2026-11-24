@@ -31,6 +31,20 @@
 export const BROWSER_SESSION_PARTITION = 'persist:aionui-browser';
 
 /**
+ * 实时通道确认登录已失效时广播的 DOM 事件。
+ *
+ * 认证层监听它，清掉本地记录的外部账号登录态 —— 否则「已登录」的本地标记会让
+ * 路由把 /login 立刻重定向回应用，而实时通道又把人踢回来，形成跳转死循环。
+ *
+ * DOM event broadcast when the realtime channel confirms the session is dead.
+ * The auth layer listens for it and drops the locally recorded external account
+ * session; without that, the local "signed in" flag bounces /login straight back
+ * into the app while the realtime channel bounces the user out again — a redirect
+ * loop.
+ */
+export const AUTH_REQUIRED_EVENT = 'aionui:auth-required';
+
+/**
  * 内置浏览器 MCP 的注册名。
  *
  * 放在 common 的理由和上面一样，而且更强：主进程用它注册这个内置 MCP，渲染进程用它

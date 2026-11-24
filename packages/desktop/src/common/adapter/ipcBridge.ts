@@ -1467,11 +1467,32 @@ export const excelPreview = {
 // Deep Link — stays IPC (Electron protocol handler)
 // ---------------------------------------------------------------------------
 
+export type DeepLinkPayload = {
+  action: string;
+  params: Record<string, string>;
+};
+
 export const deepLink = {
-  received: bridge.buildEmitter<{
-    action: string;
-    params: Record<string, string>;
-  }>('deep-link.received'),
+  received: bridge.buildEmitter<DeepLinkPayload>('deep-link.received'),
+};
+
+// ---------------------------------------------------------------------------
+// Account — external portal sign-in (Electron-native login window)
+// ---------------------------------------------------------------------------
+
+/** 外部站点返回的账号信息 / The account identity reported by the external portal. */
+export type AccountProfile = {
+  portalId: string;
+  displayName: string;
+  provider: string;
+};
+
+export const accountAuth = {
+  /**
+   * 打开登录窗口并等待站点确认登录；取消时返回 null。
+   * Open the sign-in window and wait for the portal to confirm a user; null when cancelled.
+   */
+  signIn: bridge.buildProvider<AccountProfile | null, void>('account-auth:sign-in'),
 };
 
 // ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@
   "submit": "Anmelden",
   "submitting": "Wird angemeldet...",
   "success": "Anmeldung erfolgreich! Weiterleitung...",
+  "returnHint": "Die Anmeldung läuft im Browser – kehren Sie danach zur App zurück",
   "showPassword": "Passwort anzeigen",
   "hidePassword": "Passwort ausblenden",
   "languageToggle": "Sprache ändern",

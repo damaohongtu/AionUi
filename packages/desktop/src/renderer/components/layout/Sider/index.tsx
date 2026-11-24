@@ -28,13 +28,15 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
 
   const navigate = useNavigate();
   const { closePreview, clearPreviewForScope } = usePreviewContext();
-  const { logout, status } = useAuth();
+  const { logout, status, user } = useAuth();
   const { theme, setTheme } = useThemeContext();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const isSettings = pathname.startsWith('/settings');
   const lastNonSettingsPathRef = useRef('/guid');
-  const showLogout =
-    typeof window !== 'undefined' && !(window as { electronAPI?: unknown }).electronAPI && status === 'authenticated';
+  // 桌面端与 WebUI 共用外部账号登录，退出入口在两种环境下都显示。
+  // Desktop and WebUI share the external-account sign-in, so the sign-out entry
+  // must be reachable in both.
+  const showLogout = status === 'authenticated';
 
   useEffect(() => {
     if (!pathname.startsWith('/settings')) {
@@ -255,6 +257,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         onThemeToggle={handleQuickThemeToggle}
         showLogout={showLogout}
         onLogoutClick={handleLogout}
+        accountName={status === 'authenticated' ? user?.username : null}
       />
     </div>
   );

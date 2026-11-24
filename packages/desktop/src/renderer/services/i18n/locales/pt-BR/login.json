@@ -10,6 +10,7 @@
   "submit": "Entrar",
   "submitting": "Entrando...",
   "success": "Login bem-sucedido! Redirecionando...",
+  "returnHint": "O login continua no navegador — volte ao aplicativo quando terminar",
   "showPassword": "Mostrar senha",
   "hidePassword": "Ocultar senha",
   "languageToggle": "Mudar idioma",

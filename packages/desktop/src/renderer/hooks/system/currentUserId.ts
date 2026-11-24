@@ -7,12 +7,12 @@
 /**
  * The id the BACKEND attributes to this client's requests.
  *
- * Needed because `AuthContext` cannot supply one in the desktop app: its
- * `refresh()` takes an `isDesktopRuntime` branch that sets `status` to
- * `authenticated` and `user` to `null`, so every consumer reading `user?.id`
- * gets `undefined` there. That is fine for UI that only asks "am I logged in",
- * but not for code that must compare against a `user_id` inside a broadcast
- * payload — it silently matches nothing.
+ * Needed because `AuthContext`'s user id is a client-side assumption: the
+ * desktop build signs in through the external account page and reports a local
+ * owner id (`system_default_user`) without asking the backend. That is fine for
+ * UI that only asks "am I logged in", but not for code that must compare
+ * against a `user_id` inside a broadcast payload — a mismatch silently matches
+ * nothing.
  *
  * `GET /api/system/current-user` answers it for every identity mode: it sits
  * behind the ORDINARY auth middleware and echoes whatever `CurrentUser` that

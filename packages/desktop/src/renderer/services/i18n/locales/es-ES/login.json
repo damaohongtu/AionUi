@@ -10,6 +10,7 @@
   "submit": "Iniciar sesión",
   "submitting": "Iniciando sesión...",
   "success": "¡Sesión iniciada! Redirigiendo...",
+  "returnHint": "El inicio de sesión continúa en el navegador: vuelve a la aplicación al terminar",
   "showPassword": "Mostrar contraseña",
   "hidePassword": "Ocultar contraseña",
   "languageToggle": "Cambiar idioma",

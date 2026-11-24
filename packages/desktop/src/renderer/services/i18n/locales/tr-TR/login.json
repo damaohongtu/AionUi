@@ -10,6 +10,7 @@
   "submit": "Giriş Yap",
   "submitting": "Giriş yapılıyor...",
   "success": "Giriş başarılı! Yönlendiriliyor...",
+  "returnHint": "Giriş tarayıcınızda sürer — bittiğinde uygulamaya dönün",
   "showPassword": "Şifreyi göster",
   "hidePassword": "Şifreyi gizle",
   "languageToggle": "Dili değiştir",

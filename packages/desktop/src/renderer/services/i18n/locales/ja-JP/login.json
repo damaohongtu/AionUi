@@ -10,6 +10,7 @@
   "submit": "ログイン",
   "submitting": "ログイン中...",
   "success": "ログインに成功しました。リダイレクトします...",
+  "returnHint": "ログインはブラウザで行われます。完了したらアプリに戻ってください",
   "showPassword": "パスワードを表示",
   "hidePassword": "パスワードを隠す",
   "languageToggle": "言語を切り替える",

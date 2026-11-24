@@ -7,7 +7,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tooltip } from '@arco-design/web-react';
-import { ArrowCircleLeft, CloseOne, Moon, SettingTwo, SunOne } from '@icon-park/react';
+import { ArrowCircleLeft, CloseOne, Moon, SettingTwo, SunOne, User } from '@icon-park/react';
 import classNames from 'classnames';
 import { iconColors } from '@renderer/styles/colors';
 import type { SiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
@@ -22,6 +22,8 @@ interface SiderFooterProps {
   onThemeToggle: () => void;
   showLogout?: boolean;
   onLogoutClick?: () => void;
+  /** 已登录的账号名，登录后显示在侧栏底部 / The signed-in account name, shown above the footer actions. */
+  accountName?: string | null;
 }
 
 const SiderFooter: React.FC<SiderFooterProps> = ({
@@ -34,6 +36,7 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
   onThemeToggle,
   showLogout = false,
   onLogoutClick,
+  accountName = null,
 }) => {
   const { t } = useTranslation();
 
@@ -59,6 +62,30 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
 
   return (
     <div className='shrink-0 sider-footer mt-auto pt-8px pb-8px border-t border-solid border-[var(--color-border-2)] border-s-0 border-e-0 border-b-0'>
+      {accountName && (
+        <Tooltip {...siderTooltipProps} content={accountName} position='right'>
+          <div
+            data-testid='sider-account'
+            className={classNames(
+              'mb-6px flex items-center rd-0.5rem',
+              collapsed ? 'justify-center' : 'gap-8px px-10px'
+            )}
+          >
+            <span className='size-22px flex items-center justify-center shrink-0 text-t-secondary'>
+              <User
+                theme='outline'
+                size='16'
+                fill='currentColor'
+                className='block leading-none'
+                style={{ lineHeight: 0 }}
+              />
+            </span>
+            <span className='collapsed-hidden text-t-primary text-14px font-[500] leading-24px truncate'>
+              {accountName}
+            </span>
+          </div>
+        </Tooltip>
+      )}
       <div className={classNames('flex', collapsed ? 'flex-col gap-2px' : 'items-center gap-2px')}>
         <Tooltip {...siderTooltipProps} content={isSettings ? t('common.back') : t('common.settings')} position='right'>
           <div

@@ -10,6 +10,7 @@
   "submit": "登入",
   "submitting": "登入中...",
   "success": "登入成功！準備跳轉...",
+  "returnHint": "登入會在瀏覽器中完成，完成後回到應用即可",
   "showPassword": "顯示密碼",
   "hidePassword": "隱藏密碼",
   "languageToggle": "切換語言",

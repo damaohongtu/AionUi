@@ -10,6 +10,7 @@
   "submit": "Sign In",
   "submitting": "Signing in...",
   "success": "Login successful! Redirecting...",
+  "returnHint": "Sign-in continues in your browser — come back to the app when it is done",
   "showPassword": "Show password",
   "hidePassword": "Hide password",
   "languageToggle": "Change language",

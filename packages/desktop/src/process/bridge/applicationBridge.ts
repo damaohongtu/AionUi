@@ -13,6 +13,7 @@ import { getZoomFactor, setZoomFactor } from '@process/utils/zoom';
 import { getCdpStatus, updateCdpConfig } from '@process/utils/configureChromium';
 import { getCdpBridgeHandle } from '@process/utils/cdpBridgeRegistry';
 import { getGpuStatus, setGpuUserOverride } from '@process/utils/gpuRecovery';
+import { signInWithBrowser } from '@process/services/accountLogin';
 import { initApplicationBridgeCore } from './applicationBridgeCore';
 import type { IStartOnBootStatus } from '@/common/adapter/ipcBridge';
 import { restartApplication } from './restartApplication';
@@ -97,9 +98,31 @@ export function setApplicationMainWindow(win: BrowserWindow): void {
   mainWindowRef = win;
 }
 
+/** 把主窗口带回前台 / Bring the main window back to the foreground. */
+const bringMainWindowForward = (): void => {
+  const win = mainWindowRef;
+  if (!win || win.isDestroyed()) return;
+
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  // macOS 上应用不是当前应用时，窗口 focus 不会切换到它 / On macOS the app also needs to become active.
+  if (process.platform === 'darwin') app.focus({ steal: true });
+};
+
 export function initApplicationBridge(): void {
   // Platform-agnostic handlers: systemInfo, updateSystemInfo, getPath
   initApplicationBridgeCore();
+
+  // 外部账号登录：站点确认用户后把应用带回前台，用户无需再切回窗口。
+  // External account sign-in: the site confirms the user, then the app comes forward.
+  ipcBridge.accountAuth.signIn.provider(async () => {
+    const profile = await signInWithBrowser();
+    if (profile) {
+      bringMainWindowForward();
+    }
+    return profile;
+  });
 
   ipcBridge.application.restart.provider(async () => {
     // Backend subprocess shutdown is handled by backendManager.stop() in the

@@ -103,15 +103,17 @@ function setupBrowserGlobals() {
     pathname: '/',
     hash: '',
   };
+  const dispatchEvent = vi.fn();
 
   vi.stubGlobal('window', {
     location,
+    dispatchEvent,
     setTimeout: setTimeout as unknown as Window['setTimeout'],
     clearTimeout: clearTimeout as unknown as Window['clearTimeout'],
   });
   vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
 
-  return location;
+  return { location, dispatchEvent };
 }
 
 async function loadBrowserAdapter() {
@@ -119,7 +121,7 @@ async function loadBrowserAdapter() {
   FakeWebSocket.instances = [];
   platformMock.adapter.mockClear();
 
-  const location = setupBrowserGlobals();
+  const { location, dispatchEvent } = setupBrowserGlobals();
 
   await import('@/common/adapter/browser');
 
@@ -130,7 +132,7 @@ async function loadBrowserAdapter() {
     throw new Error('browser adapter did not initialize');
   }
 
-  return { adapter, location, socket };
+  return { adapter, location, dispatchEvent, socket };
 }
 
 describe('browser WebSocket realtime error handling', () => {
@@ -150,7 +152,7 @@ describe('browser WebSocket realtime error handling', () => {
     { name: 'realtime.error', data: { code: 'REALTIME_AUTH_MISSING', message: 'Missing auth', recoverable: false } },
     { name: 'realtime.error', data: { code: 'REALTIME_AUTH_EXPIRED', message: 'Expired auth', recoverable: false } },
   ])('treats $name auth payload as terminal and redirects to login when refresh fails', async (payload) => {
-    const { adapter, location, socket } = await loadBrowserAdapter();
+    const { adapter, location, dispatchEvent, socket } = await loadBrowserAdapter();
     const emit = vi.fn();
     adapter.on({ emit });
 
@@ -172,6 +174,9 @@ describe('browser WebSocket realtime error handling', () => {
 
     await vi.advanceTimersByTimeAsync(1000);
     expect(location.hash).toBe('/login');
+    // 本地外部账号登录态也要清掉，否则会与 /login 互相弹回 / Also drop the local external session marker.
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
+    expect((dispatchEvent.mock.calls[0][0] as Event).type).toBe('aionui:auth-required');
   });
 
   it('emits non-auth realtime errors without closing or redirecting', async () => {

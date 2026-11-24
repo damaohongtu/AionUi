@@ -5,7 +5,7 @@
  */
 
 import { bridge } from '@/common/platform/bridge';
-import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
+import { AUTH_REQUIRED_EVENT, WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import { refreshSession } from './sessionRefresh';
 import type { ElectronBridgeAPI } from '@/common/types/platform/electron';
 
@@ -130,6 +130,13 @@ if (win.electronAPI) {
     if (window.location.pathname === '/login' || window.location.hash.includes('/login')) {
       return;
     }
+
+    // 通知认证层：会话真的失效了，本地记录的外部账号登录态也要清掉，
+    // 否则路由会把 /login 立刻弹回应用，形成死循环。
+    // Tell the auth layer the session is really gone so the locally recorded
+    // external account session is dropped too; otherwise the router bounces
+    // /login straight back into the app and the two sides loop forever.
+    window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
 
     // 短暂延迟以便展示 UI 反馈；用 hash 导航留在 SPA 内（HashRouter），
     // 避免整页刷新落到空 hash 造成白屏

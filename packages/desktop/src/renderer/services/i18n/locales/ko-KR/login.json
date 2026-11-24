@@ -10,6 +10,7 @@
   "submit": "로그인",
   "submitting": "로그인 중...",
   "success": "로그인 성공! 리디렉션 중...",
+  "returnHint": "로그인은 브라우저에서 진행됩니다. 완료되면 앱으로 돌아오세요",
   "showPassword": "비밀번호 표시",
   "hidePassword": "비밀번호 숨기기",
   "languageToggle": "언어 변경",
