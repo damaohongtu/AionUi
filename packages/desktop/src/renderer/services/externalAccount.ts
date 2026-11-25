@@ -21,8 +21,8 @@
 
 import { ipcBridge } from '@/common';
 
-/** 外部账号站点 / The external account portal. */
-export const EXTERNAL_ACCOUNT_LOGIN_URL = 'http://8.134.83.141:17000/';
+/** 外部账号站点（共用域名下的统一前缀）/ The external account portal, under its shared-domain prefix. */
+export const EXTERNAL_ACCOUNT_LOGIN_URL = 'http://8.134.83.141:17000/agent-portal/';
 
 /** 登录完成后最少离开应用的时间，避免点击后立刻完成的误判 / Minimum time away from the app. */
 const RETURN_GRACE_MS = 1200;

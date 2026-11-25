@@ -25,8 +25,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { shell } from 'electron';
 import type { AccountProfile } from '@/common/adapter/ipcBridge';
 
-/** 协作台站点 / The Agent Desk portal. */
-export const ACCOUNT_PORTAL_ORIGIN = 'http://8.134.83.141:17000';
+/** 协作台站点基路径（共用域名下的统一前缀，不带结尾斜杠）/ The Agent Desk portal base URL, without a trailing slash. */
+export const ACCOUNT_PORTAL_BASE_URL = 'http://8.134.83.141:17000/agent-portal';
 
 const HANDSHAKE_PATH = '/aionui-auth';
 const DEFAULT_SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
@@ -59,7 +59,7 @@ export const normalizeAccountProfile = (raw: unknown): AccountProfile | null => 
  * portal's own entry and the portal hands the result back. No jump straight to the provider.
  */
 export const buildSignInUrl = (returnUrl: string, state: string): string =>
-  `${ACCOUNT_PORTAL_ORIGIN}/` +
+  `${ACCOUNT_PORTAL_BASE_URL}/` +
   `?client_return=${encodeURIComponent(returnUrl)}&client_state=${encodeURIComponent(state)}`;
 
 type SignInOptions = {
@@ -84,7 +84,7 @@ const reply = (response: ServerResponse, status: number, title: string, detail: 
 };
 
 const exchangeCode = async (code: string): Promise<AccountProfile | null> => {
-  const response = await fetch(`${ACCOUNT_PORTAL_ORIGIN}/api/auth/exchange`, {
+  const response = await fetch(`${ACCOUNT_PORTAL_BASE_URL}/api/auth/exchange`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code }),

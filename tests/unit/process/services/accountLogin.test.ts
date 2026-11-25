@@ -17,7 +17,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-const { ACCOUNT_PORTAL_ORIGIN, buildSignInUrl, normalizeAccountProfile, signInWithBrowser } =
+const { ACCOUNT_PORTAL_BASE_URL, buildSignInUrl, normalizeAccountProfile, signInWithBrowser } =
   await import('@process/services/accountLogin');
 
 const portalIdentity = { id: 987, displayName: 'Test Person', provider: 'github' };
@@ -78,9 +78,10 @@ describe('normalizeAccountProfile', () => {
 describe('buildSignInUrl', () => {
   it('opens the portal itself and carries the loopback return with the state', () => {
     const url = new URL(buildSignInUrl('http://127.0.0.1:51022/aionui-auth', 'abc123'));
+    const portal = new URL(ACCOUNT_PORTAL_BASE_URL);
 
-    expect(url.origin).toBe(new URL(ACCOUNT_PORTAL_ORIGIN).origin);
-    expect(url.pathname).toBe('/');
+    expect(url.origin).toBe(portal.origin);
+    expect(url.pathname).toBe(`${portal.pathname}/`);
     expect(url.searchParams.get('client_return')).toBe('http://127.0.0.1:51022/aionui-auth');
     expect(url.searchParams.get('client_state')).toBe('abc123');
   });
@@ -107,7 +108,7 @@ describe('signInWithBrowser', () => {
 
     await expect(pending).resolves.toEqual({ portalId: '987', displayName: 'Test Person', provider: 'github' });
     expect(exchange).toHaveBeenCalledWith(
-      `${ACCOUNT_PORTAL_ORIGIN}/api/auth/exchange`,
+      `${ACCOUNT_PORTAL_BASE_URL}/api/auth/exchange`,
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ code: 'one-time-code' }) })
     );
   });
