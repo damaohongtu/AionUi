@@ -17,7 +17,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-const { ACCOUNT_PORTAL_BASE_URL, buildSignInUrl, normalizeAccountProfile, signInWithBrowser } =
+const { ACCOUNT_PORTAL_BASE_URL, resolveAccountPortalBaseUrl, buildSignInUrl, normalizeAccountProfile, signInWithBrowser } =
   await import('@process/services/accountLogin');
 
 const portalIdentity = { id: 987, displayName: 'Test Person', provider: 'github' };
@@ -72,6 +72,24 @@ describe('normalizeAccountProfile', () => {
     expect(normalizeAccountProfile({ id: '42' })).toBeNull();
     expect(normalizeAccountProfile({ id: '', displayName: 'Alice' })).toBeNull();
     expect(normalizeAccountProfile({ id: '42', displayName: '   ' })).toBeNull();
+  });
+});
+
+describe('resolveAccountPortalBaseUrl', () => {
+  it('defaults to the external test deployment', () => {
+    expect(resolveAccountPortalBaseUrl({})).toBe('http://8.134.83.141:17000/agent-portal');
+  });
+
+  it('lets a local run point the portal at localhost', () => {
+    expect(resolveAccountPortalBaseUrl({ AIONUI_ACCOUNT_PORTAL_URL: ' http://localhost:5173/ ' })).toBe(
+      'http://localhost:5173'
+    );
+  });
+
+  it('ignores a blank override', () => {
+    expect(resolveAccountPortalBaseUrl({ AIONUI_ACCOUNT_PORTAL_URL: '   ' })).toBe(
+      'http://8.134.83.141:17000/agent-portal'
+    );
   });
 });
 

@@ -25,8 +25,22 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { shell } from 'electron';
 import type { AccountProfile } from '@/common/adapter/ipcBridge';
 
-/** 协作台站点基路径（共用域名下的统一前缀，不带结尾斜杠）/ The Agent Desk portal base URL, without a trailing slash. */
-export const ACCOUNT_PORTAL_BASE_URL = 'http://8.134.83.141:17000/agent-portal';
+/** 默认协作台站点（共用域名下的统一前缀，不带结尾斜杠）/ Default Agent Desk portal base URL, without a trailing slash. */
+const DEFAULT_ACCOUNT_PORTAL_BASE_URL = 'http://8.134.83.141:17000/agent-portal';
+
+/**
+ * 解析协作台基址：本机联调时用 AIONUI_ACCOUNT_PORTAL_URL 指向本地门户
+ * （例如 http://localhost:5173），默认仍是公司外的测试部署。
+ * Resolve the portal base URL: AIONUI_ACCOUNT_PORTAL_URL points local runs at a local
+ * portal (for example http://localhost:5173); otherwise the external test deployment is used.
+ */
+export const resolveAccountPortalBaseUrl = (env: NodeJS.ProcessEnv = process.env): string => {
+  const override = env.AIONUI_ACCOUNT_PORTAL_URL?.trim();
+  return (override || DEFAULT_ACCOUNT_PORTAL_BASE_URL).replace(/\/+$/, '');
+};
+
+/** 协作台站点基路径 / The Agent Desk portal base URL. */
+export const ACCOUNT_PORTAL_BASE_URL = resolveAccountPortalBaseUrl();
 
 const HANDSHAKE_PATH = '/aionui-auth';
 const DEFAULT_SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
